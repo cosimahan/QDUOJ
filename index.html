@@ -993,17 +993,21 @@ python manage.py initadmin
 
 <h2 id="toc_10">配置判题</h2>
 
-<p>同上，在 <code>dockerfiles/judger</code> 文件夹也有一个 <code>docker-compose.examlple.yml</code> 文件，先修改里面的路径密码等，如果和 oj_web_server 在一台机器上，可以将 <code>0.0.0.0:8085:8080</code> 修改为 <code>127.0.0.1:8085:8080</code>，提高安全性，如果不在一台服务器上，请勿修改，否则 oj_web_server 将无法访问。然后运行 <code>docker-compose up -d</code>。</p>
+<p>同上，在 <code>dockerfiles/judger</code> 文件夹也有一个 <code>docker-compose.examlple.yml</code> 文件，请先复制一份为<code>docker-compose.yml</code>。其中 <code>{YOUR_PASSWORD}</code> 自行修改，后面会用到。</p>
 
-<p>其中 <code>{YOUR_PASSWORD}</code> 自行修改，后面会用到。</p>
+<ul>
+<li>如果judger容器和oj_web_server容器在同一台服务器上，请修改 <code>docker-compose.yml</code> 中的 <code>ports</code> 设置为 <code>127.0.0.1:8085:8080</code>，这样外网无法访问，增加安全性。如果不修改的话，下面请按照不在一台服务器上的配置填写。</li>
+<li>如果判题和web服务器不在同一台服务器上，不需要修改。</li>
+</ul>
 
-<p>在 admin 界面 <code>判题服务器</code> tab 里面，填写 <code>127.0.0.1</code>、密码和端口8085，创建一个判题服务器就好了。</p>
+<p>然后运行 <code>docker-compose up -d</code>。</p>
 
-<h1 id="toc_11">高级配置</h1>
+<ul>
+<li>如果判题和web服务器在同一台服务器上，请运行 <code>docker-compose inspect {JUDGER_CONTAINER_ID}</code>（container_id的获取方法见上文），查看它的ip地址，端口为8080。</li>
+<li>如果判题和web服务器不在同一台服务器上，ip为judger服务器的公网ip，端口为8085。</li>
+</ul>
 
-<h2 id="toc_12">多台服务器判题</h2>
-
-<p>首先确定 judger 里面端口映射设置的是 <code>0.0.0.0</code> 而不是 <code>127.0.0.1</code>，测试方法可以在 <code>oj_web_server</code> 上面 <code>curl ip:8085</code> 如果返回了一个错误页面，应该就可以正常访问。然后可以在admin后台配置这个ip。服务器之间可以通过 rsync 同步测试用例。</p>
+<p>在 admin 界面 <code>判题服务器</code> tab 里面，填写ip、端口和密码，创建一个判题服务器就可以了。</p>
 
 </div></body>
 
