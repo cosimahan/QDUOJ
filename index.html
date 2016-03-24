@@ -1003,7 +1003,7 @@ python manage.py initadmin
 <p>然后运行 <code>docker-compose up -d</code>。</p>
 
 <ul>
-<li>如果判题和web服务器在同一台服务器上，请运行 <code>docker-compose inspect {JUDGER_CONTAINER_ID}</code>（container_id的获取方法见上文），查看它的ip地址，端口为8080。</li>
+<li>如果判题和web服务器在同一台服务器上，请运行 <code>docker inspect {JUDGER_CONTAINER_ID}</code>（container_id的获取方法见上文），查看它的ip地址，端口为8080。</li>
 <li>如果判题和web服务器不在同一台服务器上，ip为judger服务器的公网ip，端口为8085。</li>
 </ul>
 
