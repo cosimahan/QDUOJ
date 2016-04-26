@@ -34,7 +34,7 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = []
 
