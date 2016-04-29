@@ -137,11 +137,17 @@
     <a href="/groups/">小组</a>&nbsp;&nbsp;
     <a href="/about/">关于</a>
 
-    {% if not request.user.is_authenticated %}
+    {% if request.user.is_authenticated %}
+        <div id="login">
+            <a href="/user/{{ request.user.username }}/" class="login button">  {{ request.user.username }}</a>
+        </div>
+
+    {% else %}
         <div id="login">
             <a href="/login/" class="login button">登录</a>
             <a href="/register/" class="register button">注册</a>
         </div>
+
     {% endif %}
 
 </div>
