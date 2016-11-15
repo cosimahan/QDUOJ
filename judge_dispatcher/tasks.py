@@ -4,6 +4,7 @@ import logging
 import time
 
 from django.db import transaction
+from django.db.models import F
 
 from rpc_client import TimeoutServerProxy
 
@@ -39,11 +40,10 @@ class JudgeDispatcher(object):
 
     def choose_judge_server(self):
         with transaction.atomic():
-            servers = JudgeServer.objects.select_for_update().filter(workload__lt=100, lock=False, status=True).order_by("-workload")
+            servers = JudgeServer.objects.select_for_update().filter(used_instance_number__lt=F("max_instance_number"), status=True).order_by("max_instance_number")
             if servers.exists():
                 server = servers.first()
-                server.left_instance_number -= 1
-                server.workload = 100 - int(float(server.left_instance_number) / server.max_instance_number * 100)
+                server.used_instance_number = F("used_instance_number") + 1
                 server.save()
                 return server
 
@@ -51,8 +51,7 @@ class JudgeDispatcher(object):
         with transaction.atomic():
             # 使用原子操作, 同时因为use和release中间间隔了判题过程,需要重新查询一下
             server = JudgeServer.objects.select_for_update().get(id=judge_server_id)
-            server.left_instance_number += 1
-            server.workload = 100 - int(float(server.left_instance_number) / server.max_instance_number * 100)
+            server.used_instance_number = F("used_instance_number") - 1
             server.save()
 
     def judge(self):
@@ -138,6 +137,10 @@ class JudgeDispatcher(object):
             # 之前状态不是ac, 现在是ac了 需要更新用户ac题目数量计数器,这里需要判重
             if problems_status["problems"].get(str(problem.id), -1) != 1 and self.submission.result == result["accepted"]:
                 user.userprofile.add_accepted_problem_number()
+
+            # 之前状态是ac, 现在不是ac了 需要用户ac题目数量计数器-1, 否则上一个逻辑胡重复增加ac计数器
+            if problems_status["problems"].get(str(problem.id), -1) == 1 and self.submission.result != result["accepted"]:
+                user.userprofile.minus_accepted_problem_number()
 
             if self.submission.result == result["accepted"]:
                 problem.add_ac_number()

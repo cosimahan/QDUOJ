@@ -15,7 +15,8 @@ from account.models import SUPER_ADMIN, User
 from problem.models import Problem
 from contest.models import ContestProblem, Contest
 from contest.decorators import check_user_contest_permission
-from utils.shortcuts import serializer_invalid_response, error_response, success_response, error_page, paginate
+from utils.shortcuts import (serializer_invalid_response, error_response,
+                             success_response, error_page, paginate, build_query_string)
 from utils.throttling import TokenBucket, BucketController
 from judge.result import result as judge_result
 from .tasks import _judge
@@ -238,28 +239,48 @@ class SubmissionAdminAPIView(APIView):
 
 
 @login_required
-def my_submission_list_page(request, page=1):
+def submission_list_page(request, page=1):
     """
-    我的所有提交的列表页
+    所有提交的列表页
     """
+
+    submission_filter = {"my": None, "user_id": None}
     # 是否显示所有人的提交
-    show_all = settings.SHOW_ALL_SUBMISSIONS_LIST or request.GET.get("show_all", False) == "true"
-    if show_all:
-        submissions = Submission.objects.filter(contest_id__isnull=True)
+    show_all = False
+
+    # url中如果存在user_id参数,说明只显示这个人的提交,忽略其他参数
+    user_id = request.GET.get("user_id", None)
+    if user_id and request.user.admin_type == SUPER_ADMIN:
+        submission_filter["user_id"] = user_id
+        submissions = Submission.objects.filter(user_id=user_id, contest_id__isnull=True)
     else:
-        submissions = Submission.objects.filter(user_id=request.user.id, contest_id__isnull=True)
-    submissions = submissions.values("id", "user_id", "problem_id", "result", "create_time", "accepted_answer_time",
-                                     "language").order_by("-create_time")
+        # 兼容部分版本,设置中没有这一项
+        try:
+            show_all = settings.SHOW_ALL_SUBMISSIONS_LIST
+        except Exception:
+            pass
+
+        # url中my=true可以只显示自己的
+        if request.GET.get("my", None) == "true":
+            submission_filter["my"] = "true"
+            show_all = False
+        if show_all:
+            submissions = Submission.objects.filter(contest_id__isnull=True)
+        else:
+            submissions = Submission.objects.filter(user_id=request.user.id, contest_id__isnull=True)
+
+    submissions = submissions.values("id", "user_id", "problem_id", "result", "create_time",
+                                     "accepted_answer_time", "language").order_by("-create_time")
 
     language = request.GET.get("language", None)
-    filter = None
     if language:
         submissions = submissions.filter(language=int(language))
-        filter = {"name": "language", "content": language}
+        submission_filter["language"] = language
+
     result = request.GET.get("result", None)
     if result:
         submissions = submissions.filter(result=int(result))
-        filter = {"name": "result", "content": result}
+        submission_filter["result"] = result
 
     paginator = Paginator(submissions, 20)
     try:
@@ -276,12 +297,11 @@ def my_submission_list_page(request, page=1):
             cache_result["problem"][problem_id] = problem.title
         item["title"] = cache_result["problem"][problem_id]
 
-        if show_all:
-            user_id = item["user_id"]
-            if user_id not in cache_result["user"]:
-                user = User.objects.get(id=user_id)
-                cache_result["user"][user_id] = user
-            item["user"] = cache_result["user"][user_id]
+        user_id = item["user_id"]
+        if user_id not in cache_result["user"]:
+            user = User.objects.get(id=user_id)
+            cache_result["user"][user_id] = user
+        item["user"] = cache_result["user"][user_id]
 
         if item["user_id"] == request.user.id or request.user.admin_type == SUPER_ADMIN:
             item["show_link"] = True
@@ -298,10 +318,12 @@ def my_submission_list_page(request, page=1):
     except Exception:
         pass
 
-    return render(request, "oj/submission/my_submissions_list.html",
+    return render(request, "oj/submission/submissions_list.html",
                   {"submissions": submissions, "page": int(page),
                    "previous_page": previous_page, "next_page": next_page, "start_id": int(page) * 20 - 20,
-                   "filter": filter, "show_all": show_all})
+                   "query": build_query_string(submission_filter),
+                   "submission_filter": submission_filter,
+                   "show_all": show_all})
 
 
 class SubmissionShareAPIView(APIView):

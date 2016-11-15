@@ -9,6 +9,9 @@ require(["jquery", "bsAlert", "csrfToken", "validator"], function ($, bsAlert, c
             var password = $("#password").val();
             var email = $("#email").val();
             var captcha = $("#captcha").val();
+            if(username.substr(0, 1) == "*" && !confirm("按照惯例, *开头的用户将不会参加比赛排名, 是否继续?")){
+                return false;
+            }
             $.ajax({
                 beforeSend: csrfTokenHeader,
                 url: "/api/register/",
@@ -29,14 +32,6 @@ require(["jquery", "bsAlert", "csrfToken", "validator"], function ($, bsAlert, c
                 }
             });
             return false;
-        }
-    });
-    
-    $("#school").blur(function () {
-        var school = $("#school").val().trim(school).toLowerCase();
-        if (school == "青岛大学" || school == "qdu" || school == "青大") {
-            $("#stu_id").show();
-            $("#school").val("青岛大学");
         }
     });
     function refresh_captcha() {

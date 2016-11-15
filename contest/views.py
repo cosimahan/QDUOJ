@@ -299,12 +299,12 @@ class MakeContestProblemPublicAPIView(APIView):
         problem_id = request.data.get("problem_id", -1)
         try:
             problem = ContestProblem.objects.get(id=problem_id, is_public=False)
+            if problem.contest.status != CONTEST_ENDED:
+                return error_response(u"比赛还没有结束，不能公开题目")
             problem.is_public = True
             problem.save()
         except ContestProblem.DoesNotExist:
             return error_response(u"比赛不存在")
-        if problem.contest.status != CONTEST_ENDED:
-            return error_response(u"比赛还没有结束，不能公开题目")
         Problem.objects.create(title=problem.title, description=problem.description,
                                input_description=problem.input_description,
                                output_description=problem.output_description,
@@ -422,7 +422,7 @@ def contest_list_page(request, page=1):
 
     # 筛选我能参加的比赛
     join = request.GET.get("join", None)
-    if request.user.is_authenticated and join:
+    if request.user.is_authenticated() and join:
         contests = contests.filter(Q(contest_type__in=[1, 2]) | Q(groups__in=request.user.group_set.all())). \
             filter(end_time__gt=datetime.datetime.now(), start_time__lt=datetime.datetime.now())
     paginator = Paginator(contests, 20)
@@ -455,6 +455,12 @@ def _get_rank(contest_id):
             order_by("-total_ac_number", "total_time"). \
             values("id", "user__id", "user__username", "user__real_name", "user__userprofile__student_id",
                    "contest_id", "submission_info", "total_submission_number", "total_ac_number", "total_time")
+    rank_number = 1
+    for item in rank:
+        # 只有有ac的题目而且不是打星的队伍才参与排名
+        if item["total_ac_number"] > 0 and item["user__username"][0] != "*":
+            item["rank_number"] = rank_number
+            rank_number += 1
     return rank
 
 
@@ -477,6 +483,11 @@ def contest_rank_page(request, contest_id):
             r.set(cache_key, json.dumps([dict(item) for item in rank]))
         else:
             rank = json.loads(rank)
+
+            # 2016-05-19 增加了缓存项目,以前的缓存主动失效
+            if rank and "rank_number" not in rank[0]:
+                rank = _get_rank(contest_id)
+                r.set(cache_key, json.dumps([dict(item) for item in rank]))
 
     return render(request, "oj/contest/contest_rank.html",
                   {"rank": rank, "contest": contest,

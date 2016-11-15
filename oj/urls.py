@@ -7,7 +7,7 @@ from account.views import (UserLoginAPIView, UsernameCheckAPIView, UserRegisterA
                            UserChangePasswordAPIView, EmailCheckAPIView,
                            UserAdminAPIView, UserInfoAPIView, ResetPasswordAPIView,
                            ApplyResetPasswordAPIView, SSOAPIView, UserProfileAPIView,
-                           TwoFactorAuthAPIView)
+                           TwoFactorAuthAPIView, AvatarUploadAPIView)
 
 from announcement.views import AnnouncementAdminAPIView
 
@@ -104,8 +104,8 @@ urlpatterns = [
     url(r'^api/open/submission/$', OpenAPISubmitCodeAPI.as_view(), name="openapi_submit_code"),
 
     url(r'^submission/(?P<submission_id>\w+)/$', "submission.views.my_submission", name="my_submission_page"),
-    url(r'^submissions/$', "submission.views.my_submission_list_page", name="my_submission_list_page"),
-    url(r'^submissions/(?P<page>\d+)/$', "submission.views.my_submission_list_page", name="my_submission_list_page"),
+    url(r'^submissions/$', "submission.views.submission_list_page", name="submission_list_page"),
+    url(r'^submissions/(?P<page>\d+)/$', "submission.views.submission_list_page", name="my_submission_list_page"),
 
     url(r'^contest/(?P<contest_id>\d+)/rank/$', "contest.views.contest_rank_page", name="contest_rank_page"),
 
@@ -141,8 +141,5 @@ urlpatterns = [
     url(r'^two_factor_auth/$', TemplateView.as_view(template_name="oj/account/two_factor_auth.html"), name="two_factor_auth_page"),
     url(r'^rank/(?P<page>\d+)/$', "account.views.user_rank_page", name="user_rank_page"),
     url(r'^rank/$', "account.views.user_rank_page", name="user_rank_page"),
+    url(r'^api/avatar/upload/', AvatarUploadAPIView.as_view(), name="avatar_upload_api"),
 ]
-
-
-if settings.DEBUG:
-    urlpatterns.append(url(r'^docs/', include('rest_framework_swagger.urls')))

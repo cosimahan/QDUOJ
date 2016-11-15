@@ -1,4 +1,5 @@
 # coding=utf-8
+import os
 import codecs
 import qrcode
 import StringIO
@@ -14,6 +15,7 @@ from django.utils.timezone import now
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
 from utils.shortcuts import (serializer_invalid_response, error_response,
                              success_response, error_page, paginate, rand_str)
 from utils.captcha import Captcha
@@ -153,10 +155,10 @@ class UsernameCheckAPIView(APIView):
         if username:
             try:
                 User.objects.get(username=username)
-                return Response(status=400)
+                return Response(status=status.HTTP_400_BAD_REQUEST)
             except User.DoesNotExist:
-                return Response(status=200)
-        return Response(status=200)
+                return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_200_OK)
 
 
 class EmailCheckAPIView(APIView):
@@ -169,11 +171,11 @@ class EmailCheckAPIView(APIView):
         reset = request.GET.get("reset", None)
         # 如果reset为true说明该请求是重置密码页面发出的，要返回的状态码应正好相反
         if reset:
-            existed = 200
-            does_not_existed = 400
+            existed = status.HTTP_200_OK
+            does_not_existed = status.HTTP_400_BAD_REQUEST
         else:
-            existed = 400
-            does_not_existed = 200
+            existed = status.HTTP_400_BAD_REQUEST
+            does_not_existed = status.HTTP_200_OK
 
         email = request.GET.get("email", None)
         if email:
@@ -495,3 +497,20 @@ def user_rank_page(request, page=1):
                                                "previous_page": previous_page,
                                                "next_page": next_page,
                                                "start_id": int(page) * 20 - 20,})
+
+
+class AvatarUploadAPIView(APIView):
+    def post(self, request):
+        if "file" not in request.FILES:
+            return error_response(u"文件上传失败")
+
+        f = request.FILES["file"]
+        if f.size > 1024 * 1024:
+            return error_response(u"图片过大")
+        if os.path.splitext(f.name)[-1].lower() not in [".gif", ".jpg", ".jpeg", ".bmp", ".png"]:
+            return error_response(u"需要上传图片格式")
+        name = "avatar_" + rand_str(5) + os.path.splitext(f.name)[-1]
+        with open(os.path.join(settings.IMAGE_UPLOAD_DIR, name), "wb") as img:
+            for chunk in request.FILES["file"]:
+                img.write(chunk)
+        return success_response({"path": "/static/upload/" + name})
